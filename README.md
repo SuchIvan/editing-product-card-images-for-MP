@@ -97,3 +97,14 @@ python3 card_blue.py blue.png card.png output
 
 Как жёлтая v1: фото без вырезания, акцент по пикселям ручки, затемнён до 4.5:1, тень только снаружи силуэта.
 Результат `output/card_blue.png`, сравнение `output/card_blue_compare.png`, проверка лезвий `output/card_blue_blades_check.png`.
+
+## Серо-голубая расчёска (из готовой карточки)
+
+```bash
+python3 clean_card.py grayblue.png grayblue_clean.png
+python3 card_grayblue.py grayblue_clean.png card.png output
+```
+
+`clean_card.py` убирает со старой карточки надписи, плашку и выноску (фон → белый по гладкой модели, линия на ручке
+заливается по соседям). Дальше как синяя: акцент по пикселям ручки, затемнён в Lab до 4.5:1.
+Результат `output/card_grayblue.png`, сравнение с синей `output/card_grayblue_compare.png`.
