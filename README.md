@@ -18,3 +18,12 @@ python3 peach_card_v2.py card.png output
 Тональный диапазон, световое пятно, складки ткани, контактная и падающая тени, отсвет на металле,
 товар ×1.08, «стекло» под «дешеддер + колтунорез», автоподбор бирюзового под WCAG.
 Результат: `output/card_peach_v2.png|.jpg`, `card_peach_v2_preview.png`, `card_peach_v2_compare.png`.
+
+## v3: исходный фон, всё крупнее, три значка
+
+```bash
+python3 card_v3.py card.png output
+```
+
+Надписи и расчёска ×1.18, «для кошек и собак», вместо плашки — три значка с подписями.
+Результат: `output/card_v3.png`, сравнение `output/card_v3_compare.png`.
