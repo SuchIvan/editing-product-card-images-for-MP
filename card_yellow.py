@@ -40,6 +40,8 @@ CONTACT_BLUR = 8
 CONTACT_OFFSET = (2, 4)
 CONTACT_ZONE = 0.07
 
+SHADOW_ON = True
+SIL_CLOSE = 41              # px: закрыть промежутки между зубьями для внешнего контура
 LINE_ON_HANDLE = 70         # сколько px правой выноски лежит на ручке
 # =========================================================
 
@@ -112,6 +114,21 @@ def main():
     print(f"резкость (дисперсия лапласиана) исходник {lap0:.0f} → на карточке {lap1:.0f}")
 
     # --- фон образца + зерно, тень, фото умножением ---
+    # Фон под бирюзовой расчёской в образце восстановлен интерполяцией и там темнее (до −9%):
+    # через промежутки между зубьями он проступал тёмной полосой. Берём гладкую модель фона —
+    # полином 2-й степени по чистым участкам образца (вне расчёски и надписей).
+    clean = (cv2.dilate((As > 0.02).astype(np.uint8), np.ones((81, 81), np.uint8)) == 0)
+    for bx in (v8.BOX_HEAD, v8.BOX_VIDEO, v8.BOX_2V1, v8.BOX_DESC, (50, 1610, 1085, 1870), (380, 300, 1110, 420), (1000, 815, 1270, 980)):
+        clean[bx[1] - 20:bx[3] + 20, bx[0] - 20:bx[2] + 20] = False
+    clean &= np.abs(P - B).max(2) < 0.03
+    gy, gx = np.mgrid[0:h:8, 0:w:8]
+    cm = clean[::8, ::8]
+    X = lambda xx, yy_: np.stack([np.ones_like(xx), xx, yy_, xx * xx, xx * yy_, yy_ * yy_], -1)
+    xn, yn = gx / w, gy / h
+    coef = np.linalg.lstsq(X(xn[cm], yn[cm]), P[::8, ::8][cm], rcond=None)[0]
+    fy, fx = np.mgrid[0:h, 0:w].astype(np.float32)
+    B = (X(fx / w, fy / h) @ coef).astype(np.float32)
+    print(f"фон: гладкая модель по {cm.sum()} точкам, диапазон {B.min() * 255:.0f}–{B.max() * 255:.0f}")
     out = B.copy()
     patch = P[1300:1550, 1150:1450]
     sigma = (patch - cv2.GaussianBlur(patch, (0, 0), 3)).std()
@@ -124,9 +141,21 @@ def main():
     yy = np.arange(h, dtype=np.float32)[:, None]
     ptop, pbot = ys.min(), ys.max()
     ph = pbot - ptop
-    low = A2 * np.clip((yy - (pbot - CONTACT_ZONE * ph)) / (0.03 * ph), 0, 1)
-    sa = shifted(A2, SHADOW_OFFSET, SHADOW_BLUR) * SHADOW_OPACITY + shifted(low, CONTACT_OFFSET, CONTACT_BLUR) * CONTACT_OPACITY
-    sa = np.clip(sa, 0, 0.6) * (1 - A2)               # тень только на фоне, не на самом товаре
+    # Точный внешний контур: маска товара, у которой закрыты промежутки между зубьями и все дырки.
+    # Тень строится от этого силуэта и кладётся только СНАРУЖИ него — на зубья, в промежутки
+    # между ними и под рамку она не попадает (там остаётся чистое фото).
+    sil = (A2 > 0.5).astype(np.uint8)
+    sil = cv2.morphologyEx(sil, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (SIL_CLOSE, SIL_CLOSE)))
+    ff = sil.copy()
+    cv2.floodFill(ff, np.zeros((h + 2, w + 2), np.uint8), (0, 0), 2)
+    sil = ((ff != 2)).astype(np.float32)                # заливка дырок
+    silf = sil
+    outside = 1 - cv2.GaussianBlur(cv2.dilate(sil, np.ones((5, 5), np.uint8)), (0, 0), 1.0)
+    low = silf * np.clip((yy - (pbot - CONTACT_ZONE * ph)) / (0.03 * ph), 0, 1)
+    sa = shifted(silf, SHADOW_OFFSET, SHADOW_BLUR) * SHADOW_OPACITY + shifted(low, CONTACT_OFFSET, CONTACT_BLUR) * CONTACT_OPACITY
+    sa = np.clip(sa, 0, 0.6) * np.clip(outside, 0, 1)   # тень строго за пределами контура
+    if not SHADOW_ON:
+        sa[:] = 0
     out = lerp(out, hex2rgb(SHADOW_COLOR), sa)
     out = out * Yn2                                     # расчёска «на белом»: белый фото = фон образца
 
@@ -285,6 +314,29 @@ def main():
     out = lerp(out, dark, np.maximum(la, left_line))
 
     res = Image.fromarray((np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8))
+
+    # --- проверка лезвий: карточка против исходного фото (тот же масштаб) ---
+    bys, bxs = np.where(sil[int(ptop + 0.35 * ph):] > 0)
+    by0_ = int(ptop + 0.35 * ph) + bys.min()
+    bb = (max(bxs.min() - 20, 0), by0_ - 10, min(int(xs.max() * 0.62), w), min(int(pbot) + 40, h))   # левая нижняя часть — зубья
+    region = np.zeros((h, w), bool)
+    region[bb[1]:bb[3], bb[0]:bb[2]] = True
+    inside = region & (sil > 0) & (np.maximum(la, left_line) < 0.01)    # без линий-указателей
+    print(f"тень внутри контура (лезвия, промежутки): max {sa[inside].max() * 100:.2f}%")
+    expect = B * Yn2                                   # чистое фото на фоне образца, без тени
+    diff = np.abs(out - expect).max(2)[inside]
+    print(f"отличие карточки от чистого фото на лезвиях: 99-й перцентиль {np.percentile(diff, 99) * 255:.1f}, "
+          f"max {diff.max() * 255:.1f} из 255 (зерно фона ±{sigma * 255 * 3:.1f})")
+    crop_photo = Image.fromarray((np.clip(Yn2[bb[1]:bb[3], bb[0]:bb[2]], 0, 1) * 255).astype(np.uint8))
+    crop_card = res.crop(bb)
+    cwid = crop_card.width
+    chk = Image.new("RGB", (cwid * 2 + 30, crop_card.height + 60), "white")
+    chk.paste(crop_photo, (0, 60))
+    chk.paste(crop_card, (cwid + 30, 60))
+    fdd = ImageFont.truetype(str(pc.FONT_PATH), 30)
+    ImageDraw.Draw(chk).text((cwid // 2, 30), "исходное фото yellow.png", font=fdd, fill=(40, 40, 40), anchor="mm")
+    ImageDraw.Draw(chk).text((cwid + 30 + cwid // 2, 30), "card_yellow.png", font=fdd, fill=(40, 40, 40), anchor="mm")
+    chk.save(OUT_DIR / "card_yellow_blades_check.png")
     res.save(OUT_DIR / "card_yellow.png")
     cw, ch = 600, round(h * 600 / w)
     cmp_ = Image.new("RGB", (cw * 2 + 30, ch + 60), "white")
