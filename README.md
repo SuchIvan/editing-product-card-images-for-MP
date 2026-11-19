@@ -112,3 +112,7 @@ python3 card_grayblue.py grayblue_clean.png card.png output
 Серо-голубая v2: `python3 card_grayblue_v2.py grayblue_clean.png card.png output` — точная маска по исходной карточке,
 сжатие на 3 px + сглаживание, снятие каймы, место линии на ручке восстановлено интерполяцией строк, без тени.
 Результат `output/card_grayblue_v2.png`, 300% до/после `output/card_grayblue_v2_zoom.png`.
+
+Серо-голубая v3: `python3 card_grayblue_v3.py grayblue_clean.png card.png output` — рифлёная площадка восстановлена
+копией соседних строк узора (без поворота/масштаба), ровная накладка — вдоль наклона края; правая выноска начинается
+в 25 px от ручки. Результат `output/card_grayblue_v3.png`, 300% до/после `output/card_grayblue_v3_zoom.png`.
