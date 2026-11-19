@@ -108,3 +108,7 @@ python3 card_grayblue.py grayblue_clean.png card.png output
 `clean_card.py` убирает со старой карточки надписи, плашку и выноску (фон → белый по гладкой модели, линия на ручке
 заливается по соседям). Дальше как синяя: акцент по пикселям ручки, затемнён в Lab до 4.5:1.
 Результат `output/card_grayblue.png`, сравнение с синей `output/card_grayblue_compare.png`.
+
+Серо-голубая v2: `python3 card_grayblue_v2.py grayblue_clean.png card.png output` — точная маска по исходной карточке,
+сжатие на 3 px + сглаживание, снятие каймы, место линии на ручке восстановлено интерполяцией строк, без тени.
+Результат `output/card_grayblue_v2.png`, 300% до/после `output/card_grayblue_v2_zoom.png`.
