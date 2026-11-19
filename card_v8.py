@@ -30,6 +30,20 @@ SUB_SIZE = 79 * 1.18 * 1.18  # ещё +18% к v3–v5 (93 → 110)
 SUB_SPACE = 0.45           # ширина пробела в подзаголовке (1.0 = обычная)
 SUB_PROD_GAP = 40          # мин. зазор подзаголовок ↔ верх расчёски
 MARGIN = 40                # мин. отступ от краёв карточки
+
+# Тень расчёски (свет слева сверху)
+SHADOW = True
+SHADOW_COLOR = "#6B6560"   # тёплый серый
+SHADOW_OPACITY = 0.27
+SHADOW_BLUR_HANDLE = 18    # px, у ручки
+SHADOW_BLUR_BLADES = 9     # px, у лезвий
+SHADOW_OFF_HANDLE = (9, 14)   # вправо, вниз (ручка выше над фоном — смещение больше)
+SHADOW_OFF_BLADES = (4, 7)
+SPLIT_Y = 0.42             # доля высоты товара: выше — «ручка», ниже — «лезвия» (плавный переход)
+CONTACT_OPACITY = 0.50
+CONTACT_BLUR = 8           # px
+CONTACT_OFFSET = (2, 4)
+CONTACT_ZONE = 0.07        # нижние 7% высоты товара — точки касания
 PROD_TOP = 420             # ниже, чем в v5 (400)
 PROD_CX = 750
 
@@ -257,6 +271,21 @@ def main():
     noise = cv2.GaussianBlur(noise, (0, 0), 0.6)
     out += (noise / noise.std() * sigma)[..., None]
 
+    if SHADOW:
+        def shifted(a, off, blur):
+            M_ = np.float32([[1, 0, off[0]], [0, 1, off[1]]])
+            return cv2.GaussianBlur(cv2.warpAffine(a, M_, (w, h)), (0, 0), blur / 2)
+        yy = np.arange(h, dtype=np.float32)[:, None]
+        ptop, pbot = ys.min(), ys.max()
+        ph = pbot - ptop
+        wb = np.clip((yy - (ptop + SPLIT_Y * ph)) / (0.15 * ph) + 0.5, 0, 1)   # 0 = ручка, 1 = лезвия
+        sh_h = shifted(A2 * (1 - wb), SHADOW_OFF_HANDLE, SHADOW_BLUR_HANDLE)
+        sh_b = shifted(A2 * wb, SHADOW_OFF_BLADES, SHADOW_BLUR_BLADES)
+        low = A2 * np.clip((yy - (pbot - CONTACT_ZONE * ph)) / (0.03 * ph), 0, 1)
+        sh_c = shifted(low, CONTACT_OFFSET, CONTACT_BLUR)
+        sa = np.clip((sh_h + sh_b) * SHADOW_OPACITY + sh_c * CONTACT_OPACITY, 0, 0.6)
+        out = lerp(out, hex2rgb(SHADOW_COLOR), sa)
+
     occ = np.zeros((h, w), np.float32)                   # маска всех надписей
 
     # заголовок
@@ -430,11 +459,11 @@ def main():
     cw = 600
     ch = round(h * cw / w)
     cmp_ = Image.new("RGB", (cw * 2 + 30, ch + 60), "white")
-    cmp_.paste(Image.open(OUT_DIR / "card_v7.png").convert("RGB").resize((cw, ch), Image.LANCZOS), (0, 60))
+    cmp_.paste(Image.open(OUT_DIR / "card_v8_noshadow.png").convert("RGB").resize((cw, ch), Image.LANCZOS), (0, 60))
     cmp_.paste(res.resize((cw, ch), Image.LANCZOS), (cw + 30, 60))
     fd = ImageFont.truetype(str(pc.FONT_PATH), 34)
-    ImageDraw.Draw(cmp_).text((cw // 2, 30), "card_v7", font=fd, fill=(40, 40, 40), anchor="mm")
-    ImageDraw.Draw(cmp_).text((cw + 30 + cw // 2, 30), "card_v8", font=fd, fill=(40, 40, 40), anchor="mm")
+    ImageDraw.Draw(cmp_).text((cw // 2, 30), "card_v8 (без тени)", font=fd, fill=(40, 40, 40), anchor="mm")
+    ImageDraw.Draw(cmp_).text((cw + 30 + cw // 2, 30), "card_v8 (с тенью)", font=fd, fill=(40, 40, 40), anchor="mm")
     cmp_.save(OUT_DIR / "card_v8_compare.png")
 
     print(f"контраст подписей {contrast(cap_col, B[1800, 750]):.2f}:1, "
