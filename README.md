@@ -85,3 +85,6 @@ python3 card_yellow.py yellow.png card.png output
 Фото не вырезается: кладётся умножением на фон образца (белый фото → фон карточки). Масштаб пропорциональный,
 вписан в рамку бирюзовой расчёски. Акцент подобран по ручке и затемнён до контраста 4.5:1.
 Результат: `output/card_yellow.png`, сравнение с бирюзовой `output/card_yellow_compare.png`.
+
+Жёлтая v2: `python3 card_yellow_v2.py yellow.png card.png output` — акценты цветом ручки #F0F341 на тёмно-серых плашках,
+иконки жёлтые с тёмно-серым знаком. Результат `output/card_yellow_v2.png`, сравнение `output/card_yellow_v2_compare.png`.
