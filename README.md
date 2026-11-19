@@ -63,3 +63,12 @@ python3 card_v7.py card.png output
 
 Слева «нержавеющая / сталь» — Montserrat Bold, бирюзовый, размер/трекинг/шаг строк как у «дешеддер + колтунорез».
 Остальное как в v6. Результат: `output/card_v7.png`, сравнение `output/card_v7_compare.png`.
+
+## v8: короткая левая выноска
+
+```bash
+python3 card_v8.py card.png output
+```
+
+Горизонталь ровно под «нержавеющая», изгиб вниз на правом конце, «сталь» по центру. Остальное как в v7.
+Результат: `output/card_v8.png`, сравнение `output/card_v8_compare.png`.
