@@ -99,7 +99,8 @@ def product_alpha(img):
     # убрать мелкий мусор
     n, lab, st, _ = cv2.connectedComponentsWithStats((a > 0.5).astype(np.uint8))
     keep = np.zeros(n, bool)
-    keep[1:] = st[1:, cv2.CC_STAT_AREA] > 5000
+    if n > 1:  # только сам товар — крупнейший компонент (rembg иногда цепляет буквы)
+        keep[1 + np.argmax(st[1:, cv2.CC_STAT_AREA])] = True
     near = cv2.dilate(keep[lab].astype(np.uint8), np.ones((15, 15), np.uint8))
     return a * near
 
