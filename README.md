@@ -88,3 +88,12 @@ python3 card_yellow.py yellow.png card.png output
 
 Жёлтая v2: `python3 card_yellow_v2.py yellow.png card.png output` — акценты цветом ручки #F0F341 на тёмно-серых плашках,
 иконки жёлтые с тёмно-серым знаком. Результат `output/card_yellow_v2.png`, сравнение `output/card_yellow_v2_compare.png`.
+
+## Синяя расчёска
+
+```bash
+python3 card_blue.py blue.png card.png output
+```
+
+Как жёлтая v1: фото без вырезания, акцент по пикселям ручки, затемнён до 4.5:1, тень только снаружи силуэта.
+Результат `output/card_blue.png`, сравнение `output/card_blue_compare.png`, проверка лезвий `output/card_blue_blades_check.png`.
